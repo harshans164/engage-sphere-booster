@@ -1,33 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Upload } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-
-const mockInterestsData = [
-  { name: "Product Features", value: 45 },
-  { name: "Pricing", value: 32 },
-  { name: "Integration", value: 28 },
-  { name: "Support", value: 25 },
-  { name: "Roadmap", value: 20 },
-];
-
-const mockImprovementsData = [
-  { name: "Audio Quality", value: 18 },
-  { name: "Session Length", value: 15 },
-  { name: "Q&A Time", value: 12 },
-  { name: "Breakout Rooms", value: 10 },
-  { name: "Materials", value: 8 },
-];
+import { db, Event } from "@/lib/db";
 
 const Analytics = () => {
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [positivesData, setPositivesData] = useState<any[]>([]);
+  const [improvementsData, setImprovementsData] = useState<any[]>([]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0]);
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      loadEventAnalytics(Number(selectedEventId));
+    }
+  }, [selectedEventId]);
+
+  const loadEvents = async () => {
+    try {
+      const allEvents = await db.events.orderBy('event_date').reverse().toArray();
+      setEvents(allEvents);
+      if (allEvents.length > 0 && !selectedEventId) {
+        setSelectedEventId(String(allEvents[0].id));
+      }
+    } catch (error) {
+      console.error('Error loading events:', error);
+    }
+  };
+
+  const loadEventAnalytics = async (eventId: number) => {
+    try {
+      const event = await db.events.get(eventId);
+      setSelectedEvent(event || null);
+
+      // Mock analytics data based on user replies
+      // In real implementation, this would analyze actual user_replies table
+      setPositivesData([
+        { name: "Host Quality", value: 8.5 },
+        { name: "Explanation", value: 9.2 },
+        { name: "Content Coverage", value: 8.8 },
+        { name: "Engagement", value: 8.1 },
+        { name: "Materials", value: 7.6 },
+      ]);
+
+      setImprovementsData([
+        { name: "Audio Quality", priority: 8 },
+        { name: "Q&A Time", priority: 7 },
+        { name: "Session Length", priority: 6 },
+        { name: "Breakout Rooms", priority: 5 },
+        { name: "Follow-up", priority: 4 },
+      ]);
+    } catch (error) {
+      console.error('Error loading analytics:', error);
     }
   };
 
@@ -40,115 +70,117 @@ const Analytics = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload Feedback Data</CardTitle>
-          <CardDescription>Upload a CSV file containing attendee feedback</CardDescription>
+          <CardTitle>Select Event</CardTitle>
+          <CardDescription>Choose an event to view detailed analytics</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="feedback-csv">Feedback CSV File</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="feedback-csv"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileChange}
-                  className="flex-1"
-                />
-                <Button className="gap-2" disabled={!uploadedFile}>
-                  <Upload className="h-4 w-4" />
-                  Upload & Analyze
-                </Button>
-              </div>
-            </div>
-            {uploadedFile && (
-              <p className="text-sm text-muted-foreground">
-                Selected file: {uploadedFile.name}
-              </p>
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="event-select">Event</Label>
+            <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+              <SelectTrigger id="event-select">
+                <SelectValue placeholder="Select an event" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={String(event.id)}>
+                    {event.event_name} - {new Date(event.event_date).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Common Interests</CardTitle>
-            <CardDescription>Topics that generated the most interest</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockInterestsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                />
-                <Bar dataKey="value" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {selectedEvent && (
+        <>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Positives (Scored 0-10)</CardTitle>
+                <CardDescription>AI-analyzed positive aspects from attendee feedback</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={positivesData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--foreground))" domain={[0, 10]} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                      }}
+                    />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Improvement Areas</CardTitle>
-            <CardDescription>Feedback on areas needing improvement</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockImprovementsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                />
-                <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>AI-Generated Summary & Tips</CardTitle>
-          <CardDescription>Insights and recommendations based on feedback analysis</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-6 bg-muted rounded-lg space-y-4">
-            <div>
-              <h4 className="font-semibold mb-2">Key Findings:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Product features and pricing were the top areas of interest among attendees</li>
-                <li>Audio quality issues were the most frequently mentioned improvement area</li>
-                <li>Attendees requested more interactive Q&A time and breakout sessions</li>
-                <li>Overall engagement remained high throughout the event duration</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-2">Recommendations:</h4>
-              <ul className="list-disc list-inside space-y-1 text-sm">
-                <li>Invest in professional audio equipment for future events</li>
-                <li>Extend Q&A sessions by 15-20 minutes to accommodate more questions</li>
-                <li>Consider implementing dedicated breakout rooms for specialized topics</li>
-                <li>Prepare additional materials on product features and pricing for follow-up</li>
-                <li>Send post-event surveys within 24 hours to capture fresh feedback</li>
-              </ul>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Improvements (Priority 0-10)</CardTitle>
+                <CardDescription>AI-identified areas needing attention</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={improvementsData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--foreground))" domain={[0, 10]} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "var(--radius)",
+                      }}
+                    />
+                    <Bar dataKey="priority" fill="hsl(var(--chart-2))" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Positives - Detailed Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-muted rounded-lg">
+                  {selectedEvent.positives ? (
+                    <p className="text-sm leading-relaxed">{selectedEvent.positives}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Positive feedback summary will appear here after AI analysis of attendee replies
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Improvements - Detailed Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="p-4 bg-muted rounded-lg">
+                  {selectedEvent.improvements ? (
+                    <p className="text-sm leading-relaxed">{selectedEvent.improvements}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Improvement suggestions will appear here after AI analysis of attendee replies
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 };

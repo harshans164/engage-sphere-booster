@@ -1,58 +1,94 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { db, UserSettings } from "@/lib/db";
 
 const Settings = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [bio, setBio] = useState("");
+  const [llmApiKey, setLlmApiKey] = useState("");
+  const [telegramBotToken, setTelegramBotToken] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check for saved theme preference
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "dark") {
-      setIsDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
+    loadSettings();
   }, []);
 
-  const handleThemeChange = (checked: boolean) => {
+  const loadSettings = async () => {
+    try {
+      const settings = await db.user_settings.toArray();
+      if (settings.length > 0) {
+        const userSettings = settings[0];
+        setBio(userSettings.bio || "");
+        setLlmApiKey(userSettings.llm_api_key || "");
+        setTelegramBotToken(userSettings.telegram_bot_token || "");
+        if (userSettings.theme === "dark") {
+          setIsDarkMode(true);
+          document.documentElement.classList.add("dark");
+        }
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const handleThemeChange = async (checked: boolean) => {
     setIsDarkMode(checked);
     if (checked) {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
     } else {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
     }
+    await saveSettings(checked ? "dark" : "light", bio, llmApiKey, telegramBotToken);
   };
 
-  const handleSave = () => {
-    // Save bio to localStorage (in a real app, this would be an API call)
-    localStorage.setItem("organizerBio", bio);
-    toast({
-      title: "Settings saved",
-      description: "Your profile has been updated successfully.",
-    });
+  const handleSave = async () => {
+    await saveSettings(isDarkMode ? "dark" : "light", bio, llmApiKey, telegramBotToken);
   };
 
-  useEffect(() => {
-    // Load saved bio
-    const savedBio = localStorage.getItem("organizerBio");
-    if (savedBio) {
-      setBio(savedBio);
+  const saveSettings = async (theme: string, userBio: string, apiKey: string, botToken: string) => {
+    try {
+      const existingSettings = await db.user_settings.toArray();
+      
+      const settingsData: UserSettings = {
+        theme,
+        bio: userBio || undefined,
+        llm_api_key: apiKey || undefined,
+        telegram_bot_token: botToken || undefined,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      if (existingSettings.length > 0) {
+        await db.user_settings.update(existingSettings[0].id!, settingsData);
+      } else {
+        await db.user_settings.add(settingsData);
+      }
+
+      toast({
+        title: "Settings saved",
+        description: "Your preferences have been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive",
+      });
     }
-  }, []);
+  };
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your preferences and profile</p>
+        <p className="text-muted-foreground mt-1">Manage your preferences and API keys</p>
       </div>
 
       <Card>
@@ -73,6 +109,41 @@ const Settings = () => {
               checked={isDarkMode}
               onCheckedChange={handleThemeChange}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>API Configuration</CardTitle>
+          <CardDescription>Configure your LLM and Telegram bot tokens</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="llm-api">LLM API Key</Label>
+            <Input
+              id="llm-api"
+              type="password"
+              placeholder="Enter your LLM API key"
+              value={llmApiKey}
+              onChange={(e) => setLlmApiKey(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Used for AI-powered message generation and analysis
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="telegram-bot">Telegram Bot Token</Label>
+            <Input
+              id="telegram-bot"
+              type="password"
+              placeholder="Enter your Telegram bot token"
+              value={telegramBotToken}
+              onChange={(e) => setTelegramBotToken(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Used to send messages to attendees via Telegram
+            </p>
           </div>
         </CardContent>
       </Card>
