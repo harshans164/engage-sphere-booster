@@ -14,7 +14,193 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendee_numbers: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          id: string
+          name: string
+          phone_number: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name: string
+          phone_number: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          name?: string
+          phone_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendee_numbers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          attendees_count: number | null
+          created_at: string
+          description: string | null
+          end_time: string
+          event_date: string
+          event_name: string
+          id: string
+          improvements: string | null
+          positives: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          attendees_count?: number | null
+          created_at?: string
+          description?: string | null
+          end_time: string
+          event_date: string
+          event_name: string
+          id?: string
+          improvements?: string | null
+          positives?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          attendees_count?: number | null
+          created_at?: string
+          description?: string | null
+          end_time?: string
+          event_date?: string
+          event_name?: string
+          id?: string
+          improvements?: string | null
+          positives?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      message_schedules: {
+        Row: {
+          created_at: string
+          custom_time_minutes: number | null
+          event_id: string | null
+          id: string
+          message_content: string
+          message_type: string | null
+          scheduled_time: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_time_minutes?: number | null
+          event_id?: string | null
+          id?: string
+          message_content: string
+          message_type?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_time_minutes?: number | null
+          event_id?: string | null
+          id?: string
+          message_content?: string
+          message_type?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_schedules_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_replies: {
+        Row: {
+          attendee_id: string | null
+          created_at: string
+          event_id: string | null
+          id: string
+          reply_text: string
+          reply_type: string | null
+        }
+        Insert: {
+          attendee_id?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          reply_text: string
+          reply_type?: string | null
+        }
+        Update: {
+          attendee_id?: string | null
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          reply_text?: string
+          reply_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_replies_attendee_id_fkey"
+            columns: ["attendee_id"]
+            isOneToOne: false
+            referencedRelation: "attendee_numbers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_replies_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          llm_api_key: string | null
+          telegram_bot_token: string | null
+          theme: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          llm_api_key?: string | null
+          telegram_bot_token?: string | null
+          theme?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          llm_api_key?: string | null
+          telegram_bot_token?: string | null
+          theme?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
